@@ -3,14 +3,19 @@ package com.deepseek.chat;
 import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.EditText;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
@@ -21,6 +26,7 @@ import com.deepseek.chat.api.DeepSeekApiService;
 import com.deepseek.chat.model.Message;
 import com.deepseek.chat.prefs.PreferencesManager;
 import com.google.android.material.appbar.MaterialToolbar;
+import com.google.android.material.button.MaterialButton;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import org.json.JSONException;
@@ -78,8 +84,8 @@ public class MainActivity extends AppCompatActivity {
 
         loadChatPage();
 
-        if (!prefs.hasApiKey()) {
-            showApiKeyDialog();
+        if (prefs.isFirstLaunch()) {
+            showFirstLaunchDialog();
         }
     }
 
@@ -93,13 +99,40 @@ public class MainActivity extends AppCompatActivity {
         runOnUiThread(() -> webView.evaluateJavascript("window.clearChat()", null));
     }
 
-    private void showApiKeyDialog() {
-        new AlertDialog.Builder(this)
-                .setTitle("需要配置 API Key")
-                .setMessage("首次使用请前往设置页配置 DeepSeek API Key。")
-                .setPositiveButton("去设置", (d, w) -> openSettings())
+    private void showFirstLaunchDialog() {
+        View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_api_key, null);
+        EditText etApiKey = dialogView.findViewById(R.id.et_dialog_api_key);
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("配置 API Key")
+                .setMessage("请输入 DeepSeek API Key 以开始使用。\n密钥仅保存在本设备上。")
+                .setView(dialogView)
                 .setCancelable(false)
-                .show();
+                .create();
+
+        dialog.setOnShowListener(d -> {
+            MaterialButton btnConfirm = dialogView.findViewById(R.id.btn_confirm);
+            btnConfirm.setEnabled(false);
+
+            etApiKey.addTextChangedListener(new TextWatcher() {
+                @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+                @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+                @Override public void afterTextChanged(Editable s) {
+                    btnConfirm.setEnabled(s.toString().trim().length() > 0);
+                }
+            });
+
+            btnConfirm.setOnClickListener(v -> {
+                String key = etApiKey.getText().toString().trim();
+                if (!key.isEmpty()) {
+                    prefs.setApiKey(key);
+                    prefs.setFirstLaunchDone();
+                    dialog.dismiss();
+                }
+            });
+        });
+
+        dialog.show();
     }
 
     private void openSettings() {
@@ -158,7 +191,6 @@ public class MainActivity extends AppCompatActivity {
         public void sendMessage(String json) {
             if (!prefs.hasApiKey()) {
                 evaluateJs("window.onError('请先设置 API Key')");
-                showApiKeyDialog();
                 return;
             }
 

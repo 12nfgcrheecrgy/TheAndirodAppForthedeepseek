@@ -57,6 +57,15 @@
                     android:inputType="none" />
             </com.google.android.material.textfield.TextInputLayout>
 
+            <ProgressBar
+                android:id="@+id/progress_models"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:indeterminate="true"
+                android:visibility="gone" />
+
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -97,6 +106,15 @@
                     android:layout_weight="1"
                     android:text="@string/deep" />
             </com.google.android.material.button.MaterialButtonToggleGroup>
+
+            <TextView
+                android:id="@+id/tv_thinking_hint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="13sp"
+                android:visibility="gone" />
 
             <TextView
                 android:layout_width="wrap_content"

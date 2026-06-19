@@ -9,6 +9,7 @@ public class PreferencesManager {
     private static final String KEY_MODEL = "model";
     private static final String KEY_THINKING_INTENSITY = "thinking_intensity";
     private static final String KEY_TEMPERATURE = "temperature";
+    private static final String KEY_FIRST_LAUNCH = "first_launch_done";
 
     public static final String MODEL_DEEPSEEK_CHAT = "deepseek-chat";
     public static final String MODEL_DEEPSEEK_REASONER = "deepseek-reasoner";
@@ -57,5 +58,13 @@ public class PreferencesManager {
 
     public float getTemperature() {
         return prefs.getFloat(KEY_TEMPERATURE, 0.7f);
+    }
+
+    public boolean isFirstLaunch() {
+        return !prefs.getBoolean(KEY_FIRST_LAUNCH, false);
+    }
+
+    public void setFirstLaunchDone() {
+        prefs.edit().putBoolean(KEY_FIRST_LAUNCH, true).apply();
     }
 }

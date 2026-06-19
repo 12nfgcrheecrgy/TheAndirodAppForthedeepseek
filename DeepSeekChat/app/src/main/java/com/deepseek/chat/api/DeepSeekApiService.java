@@ -11,6 +11,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -38,6 +39,28 @@ public class DeepSeekApiService {
         void onComplete();
     }
 
+    public interface ModelListCallback {
+        void onSuccess(List<ModelInfo> models);
+        void onError(String message);
+    }
+
+    public static class ModelInfo {
+        public final String id;
+        public final String ownedBy;
+        public final boolean supportsReasoning;
+
+        public ModelInfo(String id, String ownedBy, boolean supportsReasoning) {
+            this.id = id;
+            this.ownedBy = ownedBy;
+            this.supportsReasoning = supportsReasoning;
+        }
+
+        @Override
+        public String toString() {
+            return id;
+        }
+    }
+
     public DeepSeekApiService(boolean enableLogging) {
         OkHttpClient.Builder builder = new OkHttpClient.Builder()
                 .connectTimeout(30, TimeUnit.SECONDS)
@@ -50,6 +73,60 @@ public class DeepSeekApiService {
         }
         this.client = builder.build();
         this.mainHandler = new Handler(Looper.getMainLooper());
+    }
+
+    public void fetchModels(String apiKey, ModelListCallback callback) {
+        Request request = new Request.Builder()
+                .url(BASE_URL + "/models")
+                .addHeader("Authorization", "Bearer " + apiKey)
+                .get()
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                mainHandler.post(() -> callback.onError("获取模型列表失败: " + e.getMessage()));
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if (!response.isSuccessful()) {
+                    String errBody = response.body() != null ? response.body().string() : "";
+                    mainHandler.post(() -> callback.onError("API 错误 (" + response.code() + "): " + errBody));
+                    return;
+                }
+                ResponseBody body = response.body();
+                if (body == null) {
+                    mainHandler.post(() -> callback.onError("响应为空"));
+                    return;
+                }
+                try {
+                    String json = body.string();
+                    List<ModelInfo> models = parseModelList(json);
+                    mainHandler.post(() -> callback.onSuccess(models));
+                } catch (Exception e) {
+                    mainHandler.post(() -> callback.onError("解析模型列表失败: " + e.getMessage()));
+                }
+            }
+        });
+    }
+
+    private List<ModelInfo> parseModelList(String json) throws JSONException {
+        List<ModelInfo> result = new ArrayList<>();
+        JSONObject root = new JSONObject(json);
+        JSONArray data = root.optJSONArray("data");
+        if (data == null) return result;
+
+        for (int i = 0; i < data.length(); i++) {
+            JSONObject item = data.getJSONObject(i);
+            String id = item.optString("id", "");
+            String ownedBy = item.optString("owned_by", "DeepSeek");
+            if (id.isEmpty()) continue;
+            // 判断该模型是否支持深度推理（reasoner 系列或带有 reasoning 能力）
+            boolean supportsReasoning = id.contains("reasoner") || id.contains("r1");
+            result.add(new ModelInfo(id, ownedBy, supportsReasoning));
+        }
+        return result;
     }
 
     public void streamChat(
