@@ -244,7 +244,7 @@ body {
     border-color: var(--text-secondary);
 }
 
-#send-btn {
+#send-btn, #stop-btn {
     width: 44px;
     height: 44px;
     border: none;
@@ -259,8 +259,32 @@ body {
     flex-shrink: 0;
 }
 
-#send-btn:disabled {
+#stop-btn {
+    background: var(--error);
+}
+
+#send-btn:disabled, #stop-btn:disabled {
     opacity: 0.4;
+}
+
+.message-actions {
+    margin-top: 8px;
+    display: flex;
+    gap: 8px;
+}
+
+.message-actions button {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 4px 10px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
+.message-actions button:hover {
+    background: var(--surface-hover);
 }
 
 #status-bar {

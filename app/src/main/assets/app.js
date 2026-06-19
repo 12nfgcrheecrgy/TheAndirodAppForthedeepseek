@@ -2,6 +2,7 @@
     const container = document.getElementById('chat-container');
     const input = document.getElementById('message-input');
     const sendBtn = document.getElementById('send-btn');
+    const stopBtn = document.getElementById('stop-btn');
     const statusBar = document.getElementById('status-bar');
     const welcome = document.getElementById('welcome');
 
@@ -9,6 +10,7 @@
     let currentAssistantBubble = null;
     let currentReasoningBody = null;
     let currentContentEl = null;
+    let messageActionsEnabled = true;
 
     function escapeHtml(text) {
         const div = document.createElement('div');
@@ -41,6 +43,14 @@
         }
     }
 
+    function showWelcome() {
+        container.innerHTML = '';
+        if (welcome) {
+            welcome.style.display = '';
+            container.appendChild(welcome);
+        }
+    }
+
     function createMessage(role) {
         hideWelcome();
         const msg = document.createElement('div');
@@ -53,9 +63,70 @@
         return bubble;
     }
 
+    function appendMessageActions(bubble, content, role, isLast) {
+        if (!messageActionsEnabled) return;
+        const existing = bubble.querySelector('.message-actions');
+        if (existing) existing.remove();
+        const actions = document.createElement('div');
+        actions.className = 'message-actions';
+
+        const copyBtn = document.createElement('button');
+        copyBtn.textContent = '复制';
+        copyBtn.onclick = () => {
+            if (window.AndroidBridge) {
+                window.AndroidBridge.copyMessage(content);
+            }
+        };
+        actions.appendChild(copyBtn);
+
+        if (role === 'assistant' && isLast) {
+            const regenBtn = document.createElement('button');
+            regenBtn.textContent = '重新生成';
+            regenBtn.onclick = () => {
+                if (window.AndroidBridge) {
+                    window.AndroidBridge.regenerateLastMessage();
+                }
+            };
+            actions.appendChild(regenBtn);
+        }
+
+        bubble.appendChild(actions);
+    }
+
+    function renderMessage(role, content, reasoning) {
+        const bubble = createMessage(role);
+        if (reasoning && reasoning.length > 0) {
+            const reasoningEl = document.createElement('div');
+            reasoningEl.className = 'reasoning expanded';
+            const header = document.createElement('div');
+            header.className = 'reasoning-header';
+            header.textContent = '思考过程';
+            const body = document.createElement('div');
+            body.className = 'reasoning-body';
+            body.textContent = reasoning;
+            reasoningEl.appendChild(header);
+            reasoningEl.appendChild(body);
+            bubble.appendChild(reasoningEl);
+            reasoningEl.addEventListener('click', () => {
+                reasoningEl.classList.toggle('expanded');
+            });
+        }
+        const contentEl = document.createElement('div');
+        contentEl.className = 'content';
+        contentEl.innerHTML = simpleMarkdown(content);
+        bubble.appendChild(contentEl);
+        return bubble;
+    }
+
     function setStatus(text, isError) {
-        statusBar.textContent = text;
+        statusBar.textContent = text || '';
         statusBar.classList.toggle('error', !!isError);
+    }
+
+    function updateInputState() {
+        input.disabled = isStreaming;
+        sendBtn.style.display = isStreaming ? 'none' : 'flex';
+        stopBtn.style.display = isStreaming ? 'flex' : 'none';
     }
 
     function sendMessage() {
@@ -63,8 +134,6 @@
         if (!text || isStreaming) return;
         input.value = '';
         input.style.height = 'auto';
-        sendBtn.disabled = true;
-        setStatus('');
 
         if (window.AndroidBridge) {
             window.AndroidBridge.sendMessage(JSON.stringify({ content: text }));
@@ -79,6 +148,11 @@
     }
 
     sendBtn.addEventListener('click', sendMessage);
+    stopBtn.addEventListener('click', () => {
+        if (window.AndroidBridge) {
+            window.AndroidBridge.stopGeneration();
+        }
+    });
     input.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -87,15 +161,42 @@
     });
     input.addEventListener('input', adjustInputHeight);
 
+    window.loadHistory = function(messages) {
+        showWelcome();
+        if (!messages || messages.length === 0) {
+            showWelcome();
+            return;
+        }
+        messages.forEach((msg, index) => {
+            const bubble = renderMessage(msg.role, msg.content, msg.reasoning);
+            appendMessageActions(bubble, msg.content, msg.role, index === messages.length - 1);
+        });
+        scrollToBottom();
+    };
+
+    window.clearChat = function() {
+        showWelcome();
+        isStreaming = false;
+        currentAssistantBubble = null;
+        currentReasoningBody = null;
+        currentContentEl = null;
+        updateInputState();
+    };
+
+    window.setLoading = function(loading) {
+        isStreaming = loading;
+        updateInputState();
+    };
+
     window.onUserMessage = function(content) {
-        const bubble = createMessage('user');
-        bubble.textContent = content;
+        const bubble = renderMessage('user', content, '');
+        appendMessageActions(bubble, content, 'user', false);
         scrollToBottom();
     };
 
     window.onAssistantStart = function() {
         isStreaming = true;
-        sendBtn.disabled = true;
+        updateInputState();
         currentAssistantBubble = createMessage('assistant');
         currentContentEl = document.createElement('div');
         currentContentEl.className = 'content';
@@ -133,30 +234,20 @@
 
     window.onError = function(message) {
         isStreaming = false;
-        sendBtn.disabled = false;
+        updateInputState();
         setStatus(message, true);
     };
 
     window.onAssistantComplete = function() {
         isStreaming = false;
-        sendBtn.disabled = false;
+        updateInputState();
+        if (currentAssistantBubble && currentContentEl) {
+            appendMessageActions(currentAssistantBubble, currentContentEl.dataset.raw || '', 'assistant', true);
+        }
         currentAssistantBubble = null;
         currentReasoningBody = null;
         currentContentEl = null;
         setStatus('');
-    };
-
-    window.clearChat = function() {
-        container.innerHTML = '';
-        if (welcome) {
-            welcome.style.display = '';
-            container.appendChild(welcome);
-        }
-        isStreaming = false;
-        sendBtn.disabled = false;
-        currentAssistantBubble = null;
-        currentReasoningBody = null;
-        currentContentEl = null;
     };
 
     function init() {
@@ -170,6 +261,7 @@
                 console.error(e);
             }
         }
+        updateInputState();
     }
 
     init();
