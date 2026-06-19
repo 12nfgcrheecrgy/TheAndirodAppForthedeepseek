@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DeepSeek Chat</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="header">
+        <div id="model-badge">DeepSeek</div>
+    </div>
+    <div id="chat-container">
+        <div id="welcome">
+            <h1>DeepSeek</h1>
+            <p>智能对话，随想随答</p>
+        </div>
+    </div>
+    <div id="input-area">
+        <textarea id="message-input" rows="1" placeholder="输入消息…"></textarea>
+        <button id="send-btn" aria-label="发送">
+            <svg viewBox="0 0 24 24" width="20" height="20">
+                <path d="M2 21l21-9L2 3v7l15 2-15 2v7z" fill="currentColor"/>
+            </svg>
+        </button>
+    </div>
+    <div id="status-bar"></div>
+    <script src="app.js"></script>
+</body>
+</html>
