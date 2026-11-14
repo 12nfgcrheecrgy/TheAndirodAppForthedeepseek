@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">DeepSeek</string>
+    <string name="settings_title">设置</string>
+    <string name="api_key_label">DeepSeek API Key</string>
+    <string name="api_key_hint">sk-…</string>
+    <string name="model_label">默认模型</string>
+    <string name="thinking_intensity_label">思考强度</string>
+    <string name="temperature_label">随机性 (Temperature)</string>
+    <string name="save">保存</string>
+    <string name="cancel">取消</string>
+    <string name="hint_configure">首次使用请在设置中配置 API Key</string>
+    <string name="settings">设置</string>
+    <string name="new_chat">新对话</string>
+    <string name="input_hint">输入消息…</string>
+    <string name="light">轻量</string>
+    <string name="balanced">均衡</string>
+    <string name="deep">深度</string>
+</resources>
